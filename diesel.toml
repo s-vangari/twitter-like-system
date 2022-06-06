@@ -1,0 +1,6 @@
+[print_schema]
+file = "src/schema.rs"
+schema = "messages"
+import_types = [
+    "diesel::sql_types::*",
+]

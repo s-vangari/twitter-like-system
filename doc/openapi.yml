@@ -1,0 +1,166 @@
+openapi: 3.0.2
+servers:
+  - url: http://MINIKUBE_MESSAGE_SERVICE_URL
+    description: Minikube host and port
+info:
+  description: |-
+    Sample twitter like message API 
+  version: 1.0.0
+  title: Messages API 
+  contact:
+    email: shashankvangari@gmail.com
+tags:
+  - name: message
+    description: message related APIs
+  - name: content
+    description: message content related APIs    
+paths:
+  /message:
+    post:
+      tags:
+       - message
+      summary: Add a public message
+      description: Post a public message and content
+      operationId: addMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequestBody'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+  /message/list:
+    get:
+      tags:
+        - message
+      summary: List all messages 
+      description: List all messages with pagination 
+      operationId: getMessageList
+      parameters:
+        - in: query
+          name: page  
+          required: true
+          schema:
+            type: integer
+            default: 0
+        - in: query
+          name: size  
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: sort_by
+          schema:
+            type: string
+            default: created_datetime
+        - in: query
+          name: sort_order
+          schema:
+            type: string
+            default: desc
+            
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageList'
+        '400':
+          description: Bad request.
+        '404':
+          description: Not found
+        '5XX':
+          description: Unexpected error.                
+  /content/{message_id}:
+    get:
+      tags:
+        - content
+      summary: Get content by message_id
+      description: Get content  
+      operationId: getContent
+      parameters:
+        - in: path
+          name: message_id   # Note the name is the same as in the path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Content'
+        '400':
+          description: Bad request.
+        '404':
+          description: Not found
+        '5XX':
+          description: Unexpected error.                  
+              
+components:
+  schemas:
+     MessageRequestBody:
+      properties:
+        is_reply:
+          type: boolean
+        reply_to:
+          type: string
+          format: uuid
+        data:
+          type: string
+          example: 'hello'
+     Message:
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        content_id:
+          type: string
+          format: uuid
+        is_reply:
+          type: boolean
+        reply_to:
+          type: string
+          format: uuid 
+        created_datetime:
+          type: string
+          format: date-time
+        modified_datetime:
+          type: string
+          format: date-time
+     Content:
+      properties:
+        id:
+          type: string
+          format: uuid
+        message_id:
+          type: string
+          format: uuid
+        data:
+          type: string
+          example: 'Hello'
+        created_datetime:
+          type: string
+          format: date-time
+        modified_datetime:
+          type: string
+          format: date-time
+     MessageList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Message'
+
+          
+

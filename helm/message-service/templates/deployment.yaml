@@ -1,0 +1,108 @@
+{{- $Chart := .Chart}}
+{{- $dbMigration := .Values.dbMigration }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "message-service.fullname" . }}
+  labels:
+    {{- include "message-service.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "message-service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "message-service.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "message-service.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: init-{{ $dbMigration.name }}
+          image: "{{ $dbMigration.repository }}:{{ $dbMigration.tag }}"
+          imagePullPolicy: {{ $dbMigration.pullPolicy }}
+          command: {{ "" }}
+            {{- toYaml $dbMigration.command | trim  | nindent 12 }}
+          env:
+            - name: FLYWAY_URL
+              value: jdbc:postgresql://{{ .Release.name }}-postgresql:5432/messages_db
+            - name: FLYWAY_PASSWORD
+              valueFrom: 
+                secretKeyRef:
+                    name: {{ .Release.Name }}-postgresql
+                    key:  postgresql-password
+            {{- range $envKey, $envElement := $dbMigration.env }}
+            - name: {{ $envKey }}
+              {{- if $envElement.secret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $envElement.secret.name }}
+                  key: {{ $envElement.secret.key }}
+              {{ else }}
+              value: {{ $envElement.value | quote }}
+              {{- end }}
+            {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: DB_HOST
+              value: {{ .Release.Name }}-postgresql
+            - name: DB_PASS
+              valueFrom: 
+                secretKeyRef:
+                  name: {{ .Release.Name }}-postgresql
+                  key:  postgresql-password
+            {{- range $key, $element := .Values.env }}
+            - name: {{ $key | quote }}
+              {{- if $element.secret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $element.secret.name | quote }}
+                  key: {{ $element.secret.key | quote }}
+              {{ else }}
+              value: {{ $element.value | quote }}
+              {{- end }}
+            {{- end }}
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,17 @@
+@startuml messages_db
+entity message {
+* id : uuid
+* user_id: uuid
+* is_reply: boolean
+reply_to: uuid
+}
+
+entity content {
+* id : uuid
+* message_id: uuid
+* data: text
+}
+
+message ||..|| content
+
+@endtuml
